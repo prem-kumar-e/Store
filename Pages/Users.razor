@@ -1,0 +1,130 @@
+﻿@page "/users"
+@using Microsoft.AspNetCore.Identity;
+@using Store.Models;
+@inject UserManager<AppUser> UserManager
+@inject IJSRuntime JS
+@attribute [Authorize]
+<PageTitle>User Management</PageTitle>
+<div class="cart">
+    <div class="panel">
+        <button class="bigBtn" @onclick="() => IsModalVisible = true"><span class="oi oi-person" aria-hidden="true"></span>  New</button>
+        <button class="bigBtn"><span class="oi oi-pencil" aria-hidden="true"></span>  Edit</button>
+    </div>
+</div>
+@if (IsModalVisible)
+{
+    <div class="modal-overlay">
+        <div class="modal-window wide" @onclick:stopPropagation>
+            <div class="cart card-title">
+                <h4>Add User</h4></div>
+            <div class="cart card-content">
+                <EditForm Model="newUser" OnValidSubmit="CreateUser">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary/>
+                        <div>
+                            <label>Name:</label>
+                            <InputText @bind-Value="newUser.Name" class="form-control"/>
+                        </div>
+                        <div>
+                            <label>Email:</label>
+                            <InputText @bind-Value="newUser.Email" class="form-control"/>
+                        </div>
+                        <div>
+                            <label>Password:</label>
+                            <InputText @bind-Value="newUser.Password" type="password" class="form-control"/>
+                        </div>
+                        <div>
+                            <label>Age:</label>
+                        <InputText @bind-Value="newUser.Age" type="number" class="form-control" />
+                        </div>
+                        <div>
+                            <label>Gender:</label>                            
+                                <InputSelect name="gender" @bind-Value="newUser.Gender" class="form-control">
+                                    <option value="female">Female</option>
+                                    <option value="male">Male</option>
+                                    <option value="other">Other</option>
+                                </InputSelect>                            
+                        </div>
+                        <div>
+                            <label>Role:</label>                            
+                                <InputSelect name="gender" @bind-Value="newUser.Role" class="form-control">
+                                    <option value="admin">Admin</option>
+                                    <option value="staff">Staff</option>
+                                </InputSelect>                            
+                        </div>
+                        <div class="btn-bar">
+                            <button type="submit" class="btn btn-primary">Submit</button>
+                            <button type="button" class="btn btn-secondary" @onclick="() => IsModalVisible = false">Cancel</button>
+                        </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+}
+<div class="cart card-title d-flex justify-content-between align-items-center">
+    <h4 class="mb-0">Users</h4>
+</div>
+<div class="cart card-content">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Age</th>
+                    <th>Registered</th>
+                </tr>
+            </thead>
+            <tbody>           
+                @foreach (var user in users)
+                {
+                    <tr>
+                        <td>@user.Name</td>
+                        <td>@user.Email</td>
+                        <td>@user.Age</td>
+                        <td>@user.DoC</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    @code {
+    private List<AppUser> users = new();
+    private UserModel newUser = new();
+    private string Message = "";
+    private bool IsModalVisible = false;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {            
+            await JS.InvokeVoidAsync("changeTextById", "pageTitle", "User Management");
+        }
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        users = UserManager.Users.ToList();
+    }
+
+    private async Task CreateUser()
+    {
+
+        var user = new AppUser { 
+            UserName = newUser.Email, 
+            Email = newUser.Email, 
+            Name = newUser.Name, 
+            Age = Convert.ToInt32(newUser.Age),
+            Gender = newUser.Gender,
+            Role = newUser.Role
+            };
+        var result = await UserManager.CreateAsync(user, newUser.Password);
+
+        if (result.Succeeded)
+        {
+            Message = "User created successfully!";
+            OnInitializedAsync(); // Refresh user list
+        }
+        else
+        {
+            Message = "Error: " + string.Join(", ", result.Errors.Select(e => e.Description));
+        }
+    }    
+}

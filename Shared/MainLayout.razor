@@ -1,0 +1,43 @@
+﻿@inherits LayoutComponentBase
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager Navigation
+<PageTitle>Store</PageTitle>
+<script>
+    window.getScreenWidth = () => window.innerWidth;
+    window.getScreenHeight = () => window.innerHeight;
+</script>
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main>
+        <!--<div class="top-row px-4">
+            <h3 id="pageTitle"></h3>            
+                    <a href="#" @onclick="Logout">Logout</a>                
+        </div>-->
+
+        <article class="content">
+            @Body
+        </article>
+    </main>
+</div>
+
+@code {
+
+    private async Task Logout()
+    {
+        var client = HttpClientFactory.CreateClient("MyApiClient"); // Create an instance of HttpClient with the configured base address
+        var response = await client.PostAsync("api/auth/logout", null); // Call the logout API
+
+        if (response.IsSuccessStatusCode)
+        {
+            Navigation.NavigateTo("/", forceLoad: true); // Redirect to home or login page after logout
+        }
+        else
+        {
+            // Handle error (optional)
+            Console.WriteLine("Logout failed.");
+        }
+    }
+}

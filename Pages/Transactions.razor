@@ -1,0 +1,61 @@
+﻿@page "/transactions"
+@using Store.Data
+@using Store.Models
+@inject InvoiceService InvoiceService
+
+<PageTitle>Transactions</PageTitle>
+
+@if (invoices == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="cart card-title"><h4>Invoice Transactions</h4></div>
+    <div class="cart card-content">
+        <table class="table" style="padding:0px;">
+            <thead>
+                <tr>
+                    <th>Bill No</th>
+                    <th>Date</th>                
+                    <th>Amount</th>
+                    <th>TotalAmount</th>
+                    <th>No of Items</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var invoice in invoices)
+                {
+                    <tr @onclick="() => ShowInvoiceModal(invoice.BillNo)">
+
+                        <td>@invoice.BillNo</td>
+                        <td>@invoice.Date.ToShortDateString()</td>
+                        <td>@invoice.Amount</td>
+                        <td>@invoice.TotalAmount</td>
+                        <td>@invoice.Items.Count</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+<InvoiceModal IsVisible="@showModal" BillNo=@BillNo />
+@code {
+    private List<Invoice> invoices = new List<Invoice>();
+    private string BillNo = string.Empty;
+    private bool showModal = false;
+    //private int width = JS.InvokeAsync<int>("getScreenWidth");
+    protected override async Task OnInitializedAsync()
+    {
+        invoices = await InvoiceService.GetInvoicesAsync();
+    }
+
+    private async Task ShowInvoiceModal(string billno)
+    {
+        showModal = false;
+        StateHasChanged(); // Optional: trigger UI update
+        await Task.Delay(10); // Let the UI process the change
+        BillNo = billno;
+        showModal = true;
+    }
+}

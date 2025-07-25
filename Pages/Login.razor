@@ -1,0 +1,67 @@
+﻿@page "/"
+@layout LoginLayout
+@inject HttpClient Http //@inject IHttpClientFactory HttpClientFactory for better practice
+@inject NavigationManager Navigation
+@inject IConfiguration Configuration
+
+
+<EditForm Model="loginModel" OnValidSubmit="HandleLogin" class="sidebar">
+    <DataAnnotationsValidator />
+    <ValidationSummary />    
+        <div class="form-group">
+            <label for="exampleInputEmail1">Email address</label>
+            <InputText id="email" @bind-Value="loginModel.Email"  type="email" class="form-control" aria-describedby="emailHelp" placeholder="Enter email" />           
+        </div>
+        <div class="form-group">
+            <label for="exampleInputPassword1">Password</label>
+            <InputText id="password" type="password" @bind-Value="loginModel.Password" class="form-control" placeholder="Password" />
+        </div>
+        <div class="form-label">
+            <label class="form-check-label" for="exampleCheck1">@message</label>
+        </div>
+    <button type="submit" class="btn bigBtn">Login</button>
+</EditForm>
+
+@code {
+  
+    private string store;
+    private string message = "";
+    private LoginModel loginModel = new LoginModel();
+    protected override void OnInitialized()
+    {        // Accessing the configuration values
+        store = Configuration["ClientName"];
+    }
+    private async Task HandleLogin()
+    {
+       // var client = HttpClientFactory.CreateClient("MyApiClient"); // Create an instance of HttpClient with the configured base address
+        var response = await Http.PostAsJsonAsync("api/auth/login", loginModel); // Use relative URI
+
+        if (response.IsSuccessStatusCode)
+        {
+            Navigation.NavigateTo("/sales", forceLoad: true); // Redirect on success
+        }
+        else
+        {
+            // Handle failed login (e.g., show error message)
+            message = "Login failed. Please check your credentials.";
+            Console.WriteLine("Login failed.");
+        }
+    }
+
+    public class LoginModel
+    {
+        public string Email { get; set; }
+        public string Password { get; set; }
+    }
+}
+
+<style>
+    .sidebar {
+        color: #797979;
+        font-weight: bolder;
+        padding: 24px 50px 24px 50px;
+        /*border-radius: 0px 0px 9px 9px;
+        background: linear-gradient(119deg, rgb(242 243 244) 0%, rgb(226 235 255) 100%);*/
+        /*box-shadow: 5px 3px 5px 0px rgb(234 234 227);*/
+    }
+</style>

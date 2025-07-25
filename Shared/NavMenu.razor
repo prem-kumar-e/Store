@@ -1,0 +1,77 @@
+﻿@inject IConfiguration Configuration
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager Navigation
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <NavLink class="navbar-brand" href="sales">@store</NavLink>
+        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+    </div>
+</div>
+
+<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
+    <nav class="flex-column">
+        <div class="nav-item">
+            <NavLink class="nav-link" href="sales" Match="NavLinkMatch.All">
+                <span class="oi oi-home" aria-hidden="true"></span> Sales
+            </NavLink>
+        </div>        
+        <div class="nav-item">
+            <NavLink class="nav-link" href="transactions">
+                <span class="oi oi-list-rich" aria-hidden="true"></span> Transactions
+            </NavLink>
+        </div>
+        <div class="nav-item">
+            <NavLink class="nav-link" href="products">
+                <span class="oi oi-cart" aria-hidden="true"></span> Products
+            </NavLink>
+        </div>
+        <div class="nav-item">
+            <NavLink class="nav-link" href="users"> 
+                <span class="oi oi-person" aria-hidden="true"></span> Users
+            </NavLink>
+        </div>
+        <div class="nav-item">
+            <NavLink class="nav-link" href="settings">
+                <span class="oi oi-cog" aria-hidden="true"></span> Settings
+            </NavLink>
+        </div>
+    </nav>
+    <div class="nav-item">
+        <NavLink class="nav-link" @onclick="Logout" style="cursor:pointer">
+            <span class="oi oi-account-logout" aria-hidden="true"></span>Logout
+        </NavLink>
+    </div>
+</div>
+
+@code {
+    private bool collapseNavMenu = true;
+
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+    private string @store;
+    protected override void OnInitialized()
+    {
+        store = Configuration["ClientName"];
+    }
+    private async Task Logout()
+    {
+        var client = HttpClientFactory.CreateClient("MyApiClient"); // Create an instance of HttpClient with the configured base address
+        var response = await client.PostAsync("api/auth/logout", null); // Call the logout API
+
+        if (response.IsSuccessStatusCode)
+        {
+            Navigation.NavigateTo("/", forceLoad: true); // Redirect to home or login page after logout
+        }
+        else
+        {
+            // Handle error (optional)
+            Console.WriteLine("Logout failed.");
+        }
+    }
+}

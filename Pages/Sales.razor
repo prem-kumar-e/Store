@@ -1,0 +1,291 @@
+﻿@page "/sales"
+@inherits LayoutComponentBase
+@attribute [Authorize]
+@inject IJSRuntime JS
+@using Store.Data
+@using Store.Models
+@using System.ComponentModel.DataAnnotations;
+@inject ProductService ProductService
+@inject CategoryService CategoryService
+@inject InvoiceService InvoiceService
+@inject SettingsService SettingService
+<PageTitle>Sales</PageTitle>
+    <div class="container">
+        <div class="sales-sidebar">
+            <div class="categories">
+            <div value="All" class="cbtn" @onclick="() => Categorize(0)" tabindex="0" autofocus>All</div>
+
+            @foreach (var p in availableCaetgories)
+            {
+                if(p.Products != null){
+                    <div value="@p.Id" class="cbtn" @onclick="() => Categorize(p.Id)" tabindex="0">@p.Name</div>
+                }
+            }     
+
+        </div>
+        @if(!IsTouch){
+            <div class="product-grid">
+                @foreach (var p in availableProducts)
+                {         
+                    <div class="product-card">
+                        <strong>@p.Name</strong>
+                        <p>@p.Price</p>
+                        <button value="@p.Id" class="btn-blue" @onclick="() => AddProduct(p)"><strong>+</strong></button>
+                    </div>
+                }
+            </div>
+        }else{
+            <table class="table">
+                <tbody>
+                    @for (int i = 0; i < availableProducts.Count; i += columns)
+                    {
+                        <tr>
+                            @for (int j = 0; j < columns; j++)
+                            {
+                                int index = i + j;
+                                if (index < availableProducts.Count)
+                                {
+                                    <td class="prodButton" @onclick="() => AddProduct(availableProducts[index])" >
+                                        @availableProducts[index].Name
+                                        <!--<button value="@availableProducts[index].Id" class="btn-blue" @onclick="() => AddProduct(availableProducts[index].Id)">Add</button>-->
+                                    </td>
+                                }
+                                else
+                                {
+                                    <td class="prodMtBtn"></td> <!-- Fill empty cell -->
+                                }
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+
+    <div class="cart-section">
+        <h5 style="text-align:center">@invoice.BillNo</h5>
+
+        <div style="height: 300px; overflow-y: auto;">
+            <table class="table invTbl">
+                <tbody>
+                    @attribute [Authorize]
+                    @foreach (var item in invoice.Items)
+                    {
+                        <tr>
+                            <td>@item.Product.Name</td>
+                            <td>@item.UnitPrice</td>
+                            <td>@item.Quantity</td>
+                            <td>@item.Price</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div>
+            <input @bind="bcValue" class="form-control" @onkeyup="HandleBarcode" placeholder="Scan Barcode" @ref="barcodeInput" autofocus style="margin-top:0.5rem" />
+        </div>
+        <!-- More items -->
+        <div class="total-summary">
+            <!--<div class="mb-3" style="display: flex">
+            <label>Customer Name</label>
+            <InputText @bind-Value="invoice.CusName" class="form-control" />
+            </div>-->
+            <table>                
+                <tbody>                    
+                    <tr>
+                        <td>Tax(%):</td>
+                        <td>@invoice.Tax.ToString()</td>
+                        <td>Amount:</td>
+                        <td>@invoice.Amount.ToString("C")</td>
+                    </tr>
+                    <tr>
+                        <td>Tax Amount      :</td>
+                        <td>@invoice.TaxAmount?.ToString("C")</td>
+                        <td>Total:</td>
+                        <td>@invoice.TotalAmount?.ToString("C")</td>
+                    </tr>               
+                </tbody>
+            </table>
+        </div>
+        <!--<div class="btn-group">
+        <button class="selected">Cash</button>
+        <button>Debit</button>
+        <button>E-Wallet</button>
+        </div>-->
+        <div class="btn-bar">
+            <button class="@(invoice.TotalAmount > 0 ? "btn btn-primary btn-lg" : "btn btn-primary btn-lg disabled")" @onclick="() => CreateInvoice()" disabled=@(invoice.TotalAmount < 0)>Place Order</button>
+            <button class="@(invoice.TotalAmount > 0 ? "btn btn-danger btn-lg" : " btn btn-danger btn-lg disabled")" @onclick="() => Reset()" style="max-width:50px"><span class="oi oi-reload" aria-hidden="true"></span></button>
+        </div>       
+    </div>
+</div>
+<MessageBox Message=@MsgTxt @bind-IsVisible="@isMsgVisible" />
+@code {
+    [Parameter] public EventCallback<bool> IsVisibleChanged { get; set; }
+
+    [Parameter] public EventCallback<Invoice> OnSubmit { get; set; }
+    private Invoice invoice = new Invoice
+        {
+            Items = new List<InvoiceItem>(),
+            Tax = 0,
+            Amount = 0,
+            TotalAmount = 0
+        };
+    private List<Product> availableProducts = new List<Product>();
+    private List<Product> allProducts = new List<Product>();
+    private List<Category> availableCaetgories = new List<Category>();
+    private int? selectedProductId;
+    private ElementReference barcodeInput;
+    private string scannedValue = string.Empty;
+    private List<string> barcodeScanned = new List<string>();
+    private string bcValue = string.Empty;
+    private string MsgTxt = string.Empty;
+    private bool isMsgVisible = false;
+    private bool IsTouch = false;
+    private int columns = 4;
+
+    protected override async Task OnInitializedAsync()
+    {
+        invoice.BillNo = InvoiceService.GenerateInvoiceNumber();
+        invoice.Tax = InvoiceService.GetTax();
+        allProducts = await ProductService.GetProductsAsync();
+        availableCaetgories = await CategoryService.GetCategoriesAsync();
+        availableProducts = allProducts;
+        IsTouch = Convert.ToBoolean(await SettingService.GetSettingValue("TouchScreen"));
+    }
+
+    private async Task AddProduct(Product product)
+    {
+        if (product != null)
+        {
+            var existingItem = invoice.Items.FirstOrDefault(p => p.ProductId == product.Id);
+            if (existingItem == null)
+            {
+                invoice.Items.Add(new InvoiceItem
+                    {
+                        InvoiceId = invoice.Id,
+                        ProductId = (int)product.Id,
+                        Product = product,
+                        Quantity = 1,
+                        UnitPrice = product.Price,
+                        Price = product.Price
+                    });
+            }
+            else
+            {
+                if (existingItem.Quantity < product.StockQuantity)
+                {
+                    existingItem.Quantity += 1;
+                    existingItem.UnitPrice = product.Price;
+                    existingItem.Price += product.Price;
+                }
+            }
+            invoice.Amount = invoice.Items?.Sum(i => i.Price) ?? 0;
+            invoice.TaxAmount = (invoice.Amount / 100) * invoice.Tax ?? 0;
+            invoice.TotalAmount = invoice.Amount + invoice.TaxAmount;
+        }
+        await barcodeInput.FocusAsync();
+    }
+
+    private async Task CreateInvoice()
+    {
+        try
+        {
+            if (invoice.TotalAmount > 0)
+            {
+                invoice.Date = DateTime.Now;
+                await InvoiceService.AddInvoiceAsync(invoice);
+                if (barcodeScanned.Count > 0)
+                {
+                    await ProductService.UpdateProductBarcode(barcodeScanned, invoice);
+                }
+                isMsgVisible = true;
+                MsgTxt = "Transaction Completed";
+                await OnInitializedAsync();
+                await barcodeInput.FocusAsync();
+                Reset();
+            }
+        }catch(Exception e){
+            ShowMessage(e.Message);
+        }
+    }
+
+    private async void Reset()
+    {
+        var billNo = invoice.BillNo;
+        invoice = new Invoice
+        {
+            BillNo = billNo,
+            Items = new List<InvoiceItem>(),
+            Tax = 0,
+            Amount = 0,
+            TotalAmount = 0
+        };
+        await barcodeInput.FocusAsync();
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            int width = await JS.InvokeAsync<int>("getScreenWidth");
+            columns = width switch
+            {
+                int w when w < 1600 => 8,
+                int w when w < 1800 => 9,
+                int w when w < 2100 => 10,
+                _ => 9
+            };
+            StateHasChanged(); // Re-render
+            //await JS.InvokeVoidAsync("changeTextById", "pageTitle", "Sales");
+            await barcodeInput.FocusAsync();
+        }
+    }
+    private void Categorize(int id)
+    {
+        if(id == 0)
+            availableProducts = allProducts;
+        else
+            availableProducts = allProducts.FindAll(p => p.CategoryId == id);
+        // await barcodeInput.FocusAsync();
+    }
+    private void CalcTax(KeyboardEventArgs e)
+    {
+        if (char.IsDigit(e.Key[0]))
+        {
+            invoice.Tax = int.Parse(e.Key); // Or e.Key[0].ToString()
+        }
+        invoice.Amount = invoice.Items?.Sum(i => i.Price) ?? 0;
+        invoice.TaxAmount = (invoice.Amount / 100) * invoice.Tax ?? 0;
+        invoice.TotalAmount = invoice.Amount + invoice.TaxAmount;
+    }
+    private async Task HandleBarcode(KeyboardEventArgs e)
+    {
+        try
+        {
+            if (e.Key == "Enter" && bcValue.Trim() != "")
+            {
+                var productBarcode = await ProductService.GetBarcodeProduct(bcValue);
+                if (productBarcode != null)
+                {
+
+                    await AddProduct(productBarcode.Product); ;
+                    barcodeScanned.Add(bcValue);
+                    bcValue = "";
+                    await barcodeInput.FocusAsync();
+                }
+            }
+        }catch(Exception ex){
+            ShowMessage(ex.Message);
+            bcValue = "";
+
+        }
+    }
+
+    private void ShowMessage(string message)
+    {
+        isMsgVisible = false;
+        StateHasChanged();
+        //await Task.Delay(10); // Let the UI process the change
+        MsgTxt = message;
+        isMsgVisible = true;
+    }
+}

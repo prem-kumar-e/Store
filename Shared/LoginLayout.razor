@@ -1,0 +1,42 @@
+﻿@inject IConfiguration Configuration
+@inherits LayoutComponentBase
+
+
+<div class="login-layout">
+    <div class="clientname">
+        <h3>@store</h3>
+    </div>
+    @Body
+</div>
+@code{
+    private string store;
+    protected override void OnInitialized()
+    {
+        store = Configuration["ClientName"];
+    }
+    
+}
+<style>
+    .login-layout {
+        margin: 11% 38% 0% 38% ;
+        justify-content: center;
+        align-items: center;
+        background-color: #f8f9fa; /* Light background color */
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    .banner{
+        text-align:center
+        font-weight: bold;
+        padding-top: 16px;
+        padding-bottom: 11px;
+    }
+    .clientname{
+        color: #ffffff;
+        font-weight: bolder;
+        padding: 12px 0px 1px 0px;
+        text-align: center;
+        /*border-radius: 9px 9px 0px 0px;*/
+        background: #122060
+        /*box-shadow: 5px 3px 5px 0px rgb(234 234 227);*/
+    }
+</style>

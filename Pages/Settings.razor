@@ -1,0 +1,92 @@
+﻿@page "/settings"
+@using Store.Data
+@using Store.Models
+@inject SettingsService SettingsService
+
+<PageTitle>Settings</PageTitle>
+
+@if (adminSettings.Count > 0)
+{
+    <div style="width: 70%;margin-left: 15%;">
+        <div class="cart card-title"><h4>Admin Settings</h4></div>
+        <div class="cart card-content">
+            <table class="table white">           
+                <tbody>
+                    @foreach (var setting in adminSettings)
+                    {
+                        <tr>
+                            <td><label>Store Name</label></td>
+                            <td><InputText @bind-Value=setting.Name /></td>
+                        </tr>
+                        <tr>
+                            <td><label>Tax</label></td>
+                            <td><InputNumber @bind-Value=setting.Tax /></td>
+                        </tr>
+                        <tr>
+                            <td><label>Currency</label></td>
+                            <td><InputText @bind-Value=setting.Currency /></td>
+                        </tr>
+                        <tr>
+                            <td><label>Max Users</label></td>
+                            <td><InputNumber @bind-Value=setting.MaxUsers /></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+@if (settings.Count > 0)
+{
+    <div style="width: 70%;margin-left: 15%;">
+        <div class="cart card-title"><h4>Settings</h4></div>
+        <div class="cart card-content">
+            <table class="table white">
+                <tbody>
+                    @foreach (var setting in settings)
+                    {
+                        <tr>
+                            <td><label>@setting.Key</label></td>
+                            @if (setting.Value.Equals("true", StringComparison.OrdinalIgnoreCase) || setting.Value.Equals("false", StringComparison.OrdinalIgnoreCase))
+                            {
+                                <td>
+                                    <InputRadioGroup @bind-Value="setting.Value" TValue="string">
+                                        <InputRadio Value="@true.ToString().ToLower()" TValue="string" /> Yes
+                                        <InputRadio Value="@false.ToString().ToLower()" TValue="string" /> No
+                                    </InputRadioGroup>
+                                </td>
+                            }
+                            else if (setting.Value.StartsWith("csv:", StringComparison.OrdinalIgnoreCase))
+                            {
+                               /* if (CsvOptions.TryGetValue(setting.Key, out var options))
+                                {
+                                    <select class="form-control">
+                                        @foreach (var opt in options)
+                                        {
+                                            <option value="@opt.Key">@opt.Value</option>
+                                        }
+                                    </select>
+                                }*/
+                            }
+                            else
+                            {
+                                <td><input class="form-control" type="text" value="@setting.Value" /></td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Setting> settings = new List<Setting>();
+    private List<AdminSetting> adminSettings = new List<AdminSetting>();
+    private bool IsEnabled { get; set; } = true; // Initial value
+    protected override async Task OnInitializedAsync()
+    {
+        settings = await SettingsService.GetSettings();
+        adminSettings = await SettingsService.GetAdminSettings();
+    }
+}

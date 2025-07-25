@@ -1,0 +1,30 @@
+﻿@inject IJSRuntime JS
+@if (IsVisible)
+{
+    <div class="modal-overlay" @onclick="Close">
+        <div class="modal-window" @onclick:stopPropagation>
+            <div class="cart card-title"></div>
+            <div class="cart card-content">
+                <div><h6>@Message</h6></div>
+                <div class="btn-bar">
+                    <button type="button" class="btn btn-primary" @onclick="() => Close()">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] 
+    public bool IsVisible { get; set; }
+    [Parameter] 
+    public EventCallback<bool> IsVisibleChanged { get; set; }
+    [Parameter]
+    public string Message { get; set; } = string.Empty;    
+    private async Task Close()
+    {
+        IsVisible = false;
+        await IsVisibleChanged.InvokeAsync(IsVisible);
+    }   
+
+}

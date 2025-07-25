@@ -1,0 +1,72 @@
+﻿@inject IJSRuntime JS
+@using Store.Data
+@using Store.Models
+@using System.ComponentModel.DataAnnotations;
+@inject ProductService ProductService
+@inject CategoryService catService
+@if (IsVisible)
+{
+    <div class="modal-overlay" @onclick="Close">
+        <div class="modal-window" @onclick:stopPropagation>
+            <div class="cart card-title"><h3>New Category</h3></div>
+            <div class="cart card-content">            
+            <EditForm Model="@category" OnValidSubmit="HandleValidSubmit">
+                <DataAnnotationsValidator />
+                <ValidationSummary />                
+                <div>
+                    <label>Name:</label>
+                    <InputText @bind-Value="category.Name" class="form-control" />
+                </div>
+                <div>
+                    <label>Code:</label>
+                    <InputText @bind-Value="category.Code" class="form-control" />
+                </div>
+                <div class="btn-bar">
+                    <button type="submit" class="btn btn-primary">Submit</button>
+                    <button type="button" class="btn btn-secondary" @onclick="Close">Cancel</button>
+                </div>
+            </EditForm>
+            </div>
+        </div>
+    </div>
+}
+<MessageBox Message=@MsgTxt IsVisible="@isMsgVisible" />
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public EventCallback<bool> IsVisibleChanged { get; set; }
+
+    [Parameter] public EventCallback<Category> OnSubmit { get; set; }
+
+    private string MsgTxt = string.Empty;
+    private bool isMsgVisible = false;
+    private Category category = new Category{
+        Name =""
+    };
+    private int? selectedProductId; 
+
+
+    private async Task HandleValidSubmit()  {
+        
+        await AddCategory();
+        await Close();
+    }
+
+    private async Task Close()
+    {
+        IsVisible = false;
+        await IsVisibleChanged.InvokeAsync(IsVisible);
+    }
+    private async Task AddCategory()
+    {
+        var newCategory = new Category
+            {
+                Name = category.Name,
+                Code = category.Code
+            };
+        await catService.AddCategoryAsync(newCategory);
+        isMsgVisible = true;
+        MsgTxt = "Done";
+        await OnSubmit.InvokeAsync(newCategory);
+    }
+
+}

@@ -1,0 +1,347 @@
+﻿@page "/products"
+@using Store.Data
+@using Store.Models
+@inject ProductService ProductService
+@inject CategoryService catService
+@inject IJSRuntime JS
+@attribute [Authorize]
+<div class="cart">
+    <div class="panel">
+        <button class="bigBtn" @onclick="() => OpenAddProdModal()"><span class="oi oi-plus" aria-hidden="true"></span> Add Product</button>
+        <button class="bigBtn" @onclick="() => showModal = true"><span class="oi oi-plus" aria-hidden="true"></span> Add Category</button>
+        <button class="bigBtn" @onclick="() => CatListModal()"><span class="oi oi-list" aria-hidden="true"></span> Category List</button>
+    </div>
+</div>
+@if (IsProductVisible)
+{
+    <div class="modal-overlay">
+        <div class="modal-window wide" @onclick:stopPropagation>
+            <div class="cart card-title">
+                <h4>Product</h4></div>
+            <div class="cart card-content">
+                <EditForm Model="newProduct" OnValidSubmit="CreateProduct">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+                    <div>
+                        <label>Select Category:</label>
+                        <select @bind="selectedCategoryId" class="form-control">
+                            <option value=0>-- Select --</option>
+                            @foreach (var p in categories)
+                            {
+                                <option value="@p.Id">@p.Name</option>
+                            }
+                        </select>        
+                    </div>
+                    <div>
+                        <label>Name</label>
+                        <InputText @bind-Value="newProduct.Name" class="form-control" />
+                    </div>
+                    <div>
+                        <label>Price</label>
+                        <InputNumber @bind-Value="newProduct.Price" class="form-control" />
+                    </div>
+                    <div>
+                        <label>Quantity</label>
+                        <InputNumber @bind-Value="newProduct.StockQuantity" class="form-control" />
+                    </div>
+
+                    <div class="btn-bar">
+                        @if (isUpdate)
+                        {
+                            <button type="button" class="btn btn-primary" @onclick="() => UpdateProduct(newProduct)">Submit</button>
+                        }
+                        else
+                        {
+                            <button type="submit" class="btn btn-primary">Add</button>
+                        }
+                        <button type="button" class="btn btn-secondary" @onclick="() => IsProductVisible = false">Cancel</button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+}
+@if (IsCatListVisible)
+{   
+    <div class="modal-overlay">
+        <div class="modal-window wide" @onclick:stopPropagation>
+            <div class="cart card-title"><h4>Category List</h4></div>
+            <div class="cart card-content" style="height: 500px;overflow-y: auto;">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Code</th>
+                            <th>Stock</th>
+                            <th>Options</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var category in categories)
+                        {
+                            <tr>
+                                <td>@category.Name</td>
+                                <td>@category.Code</td>
+                                <td>N/A</td>
+                                <td>
+                                    <button class="btn"><span class="oi oi-pencil" aria-hidden="true"></span></button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                <div class="btn-bar">
+                    <button type="button" class="btn btn-secondary" @onclick="() => IsCatListVisible = false">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+@if(AddQtyVisible){
+    <div class="modal-overlay">
+        <div class="modal-window wide" @onclick:stopPropagation>
+            <div class="cart card-title"><h4>Add Products by Barcode</h4></div>
+            <div class="cart card-content" style="height: 32.5rem;overflow-y: auto;">
+                <table class="table invTbl" style="width:100%;">
+                    <tbody>
+                        <tr>
+                            <td>Product</td>
+                            <td><strong>@newProduct.Name.ToString()</strong></td>
+                            <td>Category:</td>
+                            <td><strong>@newProduct.Category.Name.ToString()</strong></td>
+                            <td>Quantity      :</td>
+                            <td><strong>@newProduct.StockQuantity.ToString()</strong></td>
+                            <td>Scanned Qty      :</td>
+                            <td><strong>@barcodes.Count.ToString()</strong></td>
+                        </tr>                       
+                    </tbody>
+                </table>
+                <div style="height: 16.8rem; overflow-y: auto;border: 1px solid #c8c7e0;">
+                    <table class="table invTbl">
+                        <thead>
+                            <tr>
+                                <th style="text-align:center">Barcode Number</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var barcode in barcodes)
+                            {
+                                <tr>
+                                    <td>@barcode.Barcode</td>                            
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <div style="margin-top: 1.2rem;">
+                    <input @bind="barcodeValue" class="form-control" @onkeyup="HandleBarcode" placeholder="Scan Barcode" @ref="barcodeInput" autofocus />
+                </div>
+                <div class="btn-bar">
+                    <button type="button" class="@(barcodes.Count > 0 ? "btn btn-primary" : "btn btn-primary disabled")" @onclick="() => UpdateInventory()">Add</button>
+                    <button type="button" class="@(barcodes.Count > 0 ? "btn btn-danger" : " btn btn-danger disabled")" @onclick="() => ResetBarcodes()">Reset</button>
+                    <button type="button" class="btn btn-secondary" @onclick="() => AddQtyVisible = false">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<div class="cart card-title"><h4>Product List</h4></div>
+<div class="cart card-content" style="height: 35rem;overflow-y: auto;">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Price</th>
+                <th>Stock</th>
+                <th>Category</th>
+                <th>Options</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var product in products)
+            {
+                <tr>
+                    <td>@product.Name</td>
+                    <td>@product.Price</td>
+                    <td>@product.StockQuantity</td>
+                    <td>@product.Category.Name</td>
+                    <td>
+                        <button class="btn btn-outline-secondary" @onclick="() => OpenBarcodeModal(product)" title="Restock Product"><span class="oi oi-loop-square" aria-hidden="true" style=" transform: rotate(90deg);font-size: 18px;"></span></button>
+                        <button class="btn btn-outline-secondary" @onclick="() => EditProduct(product)" title="Edit Product"><span class="oi oi-pencil" aria-hidden="true"></span></button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+<CategoryPopup IsVisible="@showModal" IsVisibleChanged="@((v) => showModal = v)" OnSubmit="OnSubmitted" />
+<MessageBox Message=@MsgTxt @bind-IsVisible="@isMsgVisible" />
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public bool isUpdate { get; set; }
+    [Parameter] public bool IsProductVisible { get; set; }
+    [Parameter] public bool IsCatListVisible { get; set; }    
+    [Parameter] public EventCallback<bool> IsVisibleChanged { get; set; }
+    [Parameter] public EventCallback<Product> OnSubmit { get; set; }
+    private bool showModal = false;
+    public bool AddQtyVisible = false;
+    private List<Category> categories = new List<Category>();
+    private List<Product> products = new List<Product>();
+    private int? selectedCategoryId;
+    private string MsgTxt = string.Empty;
+    private bool isMsgVisible = false;
+    private bool shouldFocus = false;
+    private string barcodeValue = string.Empty;
+    private ElementReference barcodeInput;
+    private Product newProduct = new Product
+    {
+        Name = ""  // ✔ Required property set
+    };
+    private List<ProductBarcode>? barcodes { get; set; }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("changeTextById", "pageTitle", "Products");
+            // await barcodeInput.FocusAsync();
+        }
+        if (shouldFocus)
+        {
+            shouldFocus = false;
+            await Task.Yield(); // optional but helps ensure DOM is stable
+            await barcodeInput.FocusAsync();
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        products = await ProductService.GetProductsAsync();
+        categories = await catService.GetCategoriesAsync();
+    }
+
+    private async Task CreateProduct()
+    {
+
+        var product = new Product
+            {
+                Id = newProduct.Id,
+                Price = newProduct.Price,
+                Name = newProduct.Name,
+                StockQuantity = newProduct.StockQuantity,
+                CategoryId = (int)selectedCategoryId
+            };
+        await ProductService.AddProductAsync(product);
+        OnInitializedAsync();
+        IsProductVisible = false;
+        newProduct = new Product{Name = ""};
+        ShowMessage("Done");
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        await OnSubmit.InvokeAsync(newProduct);
+        await Close();
+    }
+
+    private async Task Close()
+    {
+        IsVisible = false;
+        isUpdate = false;
+        await IsVisibleChanged.InvokeAsync(IsVisible);
+    }
+
+    private void OnSubmitted(Category category)
+    {
+        // Save to DB, show success message etc.
+        Console.WriteLine($"Bill for {category.Name} - {category.Code}");
+        OnInitializedAsync();
+    }
+
+    private void EditProduct(Product product)    {
+        newProduct = product;
+        isUpdate = true;
+        IsProductVisible = true;
+        selectedCategoryId = product.CategoryId;
+    }
+
+    private void OpenAddProdModal(){
+        newProduct = new Product { Name = "" };
+        IsProductVisible = true;
+        selectedCategoryId = 0;
+    }
+    private void CatListModal()
+    {        
+        IsCatListVisible = true;
+    }
+
+    private async Task UpdateProduct(Product modProduct){
+        var product = new Product
+            {
+                Id = modProduct.Id,
+                Price = modProduct.Price,
+                Name = modProduct.Name,
+                StockQuantity = modProduct.StockQuantity,
+                CategoryId = (int)selectedCategoryId
+            };
+        await ProductService.UpdateProductAsync(product);
+        IsProductVisible = false;    
+        ShowMessage("Updated");
+    }
+    private async Task UpdateInventory(){
+        try
+        {
+            await ProductService.AddProductBarcode(barcodes);            
+            ShowMessage(barcodes.Count.ToString() + " Items added to " + newProduct.Name);
+            ResetBarcodes();
+        }catch(Exception e){
+            ShowMessage("Error:" + e.Message);
+        }
+    }
+    private void OpenBarcodeModal(Product product){
+
+        barcodes = new List<ProductBarcode>();
+        AddQtyVisible = true;
+        newProduct = product;
+        shouldFocus = true;
+    }
+
+    private void HandleBarcode(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" &&  barcodeValue.Trim() != "")
+        {
+            var existingItem = barcodes.FirstOrDefault(p => p.Barcode == barcodeValue.Trim());
+            if (existingItem == null)
+            {
+                Console.WriteLine($"Scanned Barcode: {barcodeValue}");
+                barcodes.Add(new ProductBarcode
+                    {
+                        Barcode = barcodeValue.Trim(),
+                        Product = newProduct,
+                        ProductId = newProduct.Id
+                    });                
+                barcodeValue = "";
+            }
+            else{
+                ShowMessage("Duplicate Barcode");
+                barcodeValue = "";
+            }
+        }
+    }
+
+    private async Task ResetBarcodes()
+    {
+        barcodeValue = "";
+        barcodes = new List<ProductBarcode>();
+        await InvokeAsync(async () => await barcodeInput.FocusAsync());
+    }
+
+    private void ShowMessage(string message)
+    {
+        isMsgVisible = false;
+        StateHasChanged();
+        //await Task.Delay(10); // Let the UI process the change
+        MsgTxt = message;
+        isMsgVisible = true;
+    }
+}
